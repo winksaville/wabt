@@ -1,7 +1,7 @@
 ;;; TOOL: run-interp-spec
 ;;; STDIN_FILE: third_party/testsuite/memory_redundancy.wast
 (;; STDOUT ;;;
-$invoke_1() 
-$invoke_3() 
+$invoke_1() => void
+$invoke_3() => void
 3/3 tests passed.
 ;;; STDOUT ;;)

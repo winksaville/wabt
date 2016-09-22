@@ -1,15 +1,15 @@
 ;;; TOOL: run-interp-spec
 ;;; STDIN_FILE: third_party/testsuite/float_exprs.wast
 (;; STDOUT ;;;
-$invoke_0() 
-$invoke_1() 
-$invoke_2() 
-$invoke_3() 
-$invoke_8() 
-$invoke_0() 
-$invoke_1() 
-$invoke_2() 
-$invoke_3() 
-$invoke_8() 
+$invoke_0() => void
+$invoke_1() => void
+$invoke_2() => void
+$invoke_3() => void
+$invoke_8() => void
+$invoke_0() => void
+$invoke_1() => void
+$invoke_2() => void
+$invoke_3() => void
+$invoke_8() => void
 694/694 tests passed.
 ;;; STDOUT ;;)

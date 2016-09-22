@@ -13,11 +13,11 @@ assert_invalid error:
   third_party/testsuite/start.wast:15:5: start function must be nullary
     (start $main)
     ^^^^^^^^^^^^^
-$invoke_1() 
-$invoke_3() 
-$invoke_1() 
-$invoke_3() 
-called import spectest.print(i32:1)
-called import spectest.print(i32:2)
+$invoke_1() => void
+$invoke_3() => void
+$invoke_1() => void
+$invoke_3() => void
+called import spectest.print(i32:1) => void
+called import spectest.print(i32:2) => void
 6/6 tests passed.
 ;;; STDOUT ;;)

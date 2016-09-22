@@ -17,19 +17,19 @@ assert_invalid error:
   third_party/testsuite/store_retval.wast:49:25: type mismatch of set_local. got f64, expected f32
         (set_local $f32 (set_local $f64 (f64.const 1)))))
                         ^
-called import spectest.print(i32:1)
-called import spectest.print(i64:2)
-called import spectest.print(f32:3)
-called import spectest.print(f64:4)
-called import spectest.print(i32:11)
-called import spectest.print(i64:12)
-called import spectest.print(f32:13)
-called import spectest.print(f64:14)
-called import spectest.print(i32:512)
-called import spectest.print(i32:65536)
-called import spectest.print(i64:512)
-called import spectest.print(i64:65536)
-called import spectest.print(i64:4294967296)
-$invoke_0() 
+called import spectest.print(i32:1) => void
+called import spectest.print(i64:2) => void
+called import spectest.print(f32:3) => void
+called import spectest.print(f64:4) => void
+called import spectest.print(i32:11) => void
+called import spectest.print(i64:12) => void
+called import spectest.print(f32:13) => void
+called import spectest.print(f64:14) => void
+called import spectest.print(i32:512) => void
+called import spectest.print(i32:65536) => void
+called import spectest.print(i64:512) => void
+called import spectest.print(i64:65536) => void
+called import spectest.print(i64:4294967296) => void
+$invoke_0() => void
 0/0 tests passed.
 ;;; STDOUT ;;)

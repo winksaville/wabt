@@ -1,29 +1,29 @@
 ;;; TOOL: run-interp-spec
 ;;; STDIN_FILE: third_party/testsuite/float_memory.wast
 (;; STDOUT ;;;
-$invoke_2() 
-$invoke_5() 
-$invoke_8() 
-$invoke_11() 
-$invoke_2() 
-$invoke_5() 
-$invoke_8() 
-$invoke_11() 
-$invoke_2() 
-$invoke_5() 
-$invoke_8() 
-$invoke_11() 
-$invoke_2() 
-$invoke_5() 
-$invoke_8() 
-$invoke_11() 
-$invoke_2() 
-$invoke_5() 
-$invoke_8() 
-$invoke_11() 
-$invoke_2() 
-$invoke_5() 
-$invoke_8() 
-$invoke_11() 
+$invoke_2() => void
+$invoke_5() => void
+$invoke_8() => void
+$invoke_11() => void
+$invoke_2() => void
+$invoke_5() => void
+$invoke_8() => void
+$invoke_11() => void
+$invoke_2() => void
+$invoke_5() => void
+$invoke_8() => void
+$invoke_11() => void
+$invoke_2() => void
+$invoke_5() => void
+$invoke_8() => void
+$invoke_11() => void
+$invoke_2() => void
+$invoke_5() => void
+$invoke_8() => void
+$invoke_11() => void
+$invoke_2() => void
+$invoke_5() => void
+$invoke_8() => void
+$invoke_11() => void
 60/60 tests passed.
 ;;; STDOUT ;;)

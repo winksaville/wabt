@@ -219,6 +219,10 @@ static void print_typed_value(WasmInterpreterTypedValue* tv) {
       break;
     }
 
+    case WASM_TYPE_VOID:
+      printf("void");
+      break;
+
     default:
       assert(0);
       break;
@@ -248,13 +252,9 @@ static WasmResult default_import_callback(WasmInterpreterModule* module,
   WASM_ZERO_MEMORY(result);
   result.type = sig->result_type;
 
-  if (sig->result_type != WASM_TYPE_VOID) {
-    printf(") => ");
-    print_typed_value(&result);
-    printf("\n");
-  } else {
-    printf(")\n");
-  }
+  printf(") => ");
+  print_typed_value(&result);
+  printf("\n");
   *out_result = result;
   return WASM_OK;
 }
@@ -333,10 +333,7 @@ static WasmInterpreterResult run_export(
       if (i != num_params - 1)
         printf(", ");
     }
-    if (sig->result_type != WASM_TYPE_VOID)
-      printf(") => ");
-    else
-      printf(") ");
+    printf(") => ");
   }
 
   if (result == WASM_INTERPRETER_RETURNED) {
@@ -345,12 +342,11 @@ static WasmInterpreterResult run_export(
     if (sig->result_type != WASM_TYPE_VOID) {
       assert(thread->value_stack_top == 1);
       out_return_value->value = thread->value_stack.data[0];
-
-      if (verbose)
-        print_typed_value(out_return_value);
     } else {
       assert(thread->value_stack_top == 0);
     }
+    if (verbose)
+      print_typed_value(out_return_value);
 
     if (verbose)
       printf("\n");

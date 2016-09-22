@@ -15,6 +15,6 @@
     (i32.const 22))
   (export "i" $i))
 (;; STDOUT ;;;
-h() error: integer divide by zero
+h() => error: integer divide by zero
 i() => i32:22
 ;;; STDOUT ;;)

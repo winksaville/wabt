@@ -10,7 +10,7 @@
   (export "test" $test)
 )
 (;; STDOUT ;;;
-called import stdio.print(i32:100)
-called import stdio.print(i32:200, i32:300)
+called import stdio.print(i32:100) => void
+called import stdio.print(i32:200, i32:300) => void
 test() => i32:1
 ;;; STDOUT ;;)
