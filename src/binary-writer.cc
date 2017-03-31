@@ -37,6 +37,109 @@
 
 namespace wabt {
 
+#define LEB128_LOOP_UNTIL(end_cond) \
+  do {                              \
+    uint8_t byte = value & 0x7f;    \
+    value >>= 7;                    \
+    if (end_cond) {                 \
+      data[length++] = byte;        \
+      break;                        \
+    } else {                        \
+      data[length++] = byte | 0x80; \
+    }                               \
+  } while (1)
+
+uint32_t write_fixed_u32_leb128_at(Stream* stream,
+                                   uint32_t offset,
+                                   uint32_t value,
+                                   const char* desc) {
+  uint8_t data[MAX_U32_LEB128_BYTES];
+  uint32_t length =
+      write_fixed_u32_leb128_raw(data, data + MAX_U32_LEB128_BYTES, value);
+  stream->WriteDataAt(offset, data, length, desc);
+  return length;
+}
+
+void write_u32_leb128(Stream* stream, uint32_t value, const char* desc) {
+  uint8_t data[MAX_U32_LEB128_BYTES];
+  uint32_t length = 0;
+  LEB128_LOOP_UNTIL(value == 0);
+  stream->WriteData(data, length, desc);
+}
+
+void write_fixed_u32_leb128(Stream* stream, uint32_t value, const char* desc) {
+  uint8_t data[MAX_U32_LEB128_BYTES];
+  uint32_t length =
+      write_fixed_u32_leb128_raw(data, data + MAX_U32_LEB128_BYTES, value);
+  stream->WriteData(data, length, desc);
+}
+
+/* returns the length of the leb128 */
+uint32_t write_u32_leb128_at(Stream* stream,
+                             uint32_t offset,
+                             uint32_t value,
+                             const char* desc) {
+  uint8_t data[MAX_U32_LEB128_BYTES];
+  uint32_t length = 0;
+  LEB128_LOOP_UNTIL(value == 0);
+  stream->WriteDataAt(offset, data, length, desc);
+  return length;
+}
+
+uint32_t write_fixed_u32_leb128_raw(uint8_t* data,
+                                    uint8_t* end,
+                                    uint32_t value) {
+  if (end - data < MAX_U32_LEB128_BYTES)
+    return 0;
+  data[0] = (value & 0x7f) | 0x80;
+  data[1] = ((value >> 7) & 0x7f) | 0x80;
+  data[2] = ((value >> 14) & 0x7f) | 0x80;
+  data[3] = ((value >> 21) & 0x7f) | 0x80;
+  data[4] = ((value >> 28) & 0x0f);
+  return MAX_U32_LEB128_BYTES;
+}
+
+void write_i32_leb128(Stream* stream, int32_t value, const char* desc) {
+  uint8_t data[MAX_U32_LEB128_BYTES];
+  uint32_t length = 0;
+  if (value < 0)
+    LEB128_LOOP_UNTIL(value == -1 && (byte & 0x40));
+  else
+    LEB128_LOOP_UNTIL(value == 0 && !(byte & 0x40));
+
+  stream->WriteData(data, length, desc);
+}
+
+static void write_i64_leb128(Stream* stream, int64_t value, const char* desc) {
+  uint8_t data[MAX_U64_LEB128_BYTES];
+  uint32_t length = 0;
+  if (value < 0)
+    LEB128_LOOP_UNTIL(value == -1 && (byte & 0x40));
+  else
+    LEB128_LOOP_UNTIL(value == 0 && !(byte & 0x40));
+
+  stream->WriteData(data, length, desc);
+}
+
+#undef LEB128_LOOP_UNTIL
+
+void write_str(Stream* stream,
+               const char* s,
+               size_t length,
+               const char* desc,
+               PrintChars print_chars) {
+  write_u32_leb128(stream, length, "string length");
+  stream->WriteData(s, length, desc, print_chars);
+}
+
+void write_opcode(Stream* stream, Opcode opcode) {
+  write_u8_enum(stream, opcode, get_opcode_name(opcode));
+}
+
+void write_type(Stream* stream, Type type) {
+  write_i32_leb128_enum(stream, type, get_type_name(type));
+}
+
 namespace {
 
 /* TODO(binji): better leb size guess. Some sections we know will only be 1
@@ -57,9 +160,18 @@ struct RelocSection {
 RelocSection::RelocSection(const char* name, BinarySection code)
     : name(name), section_code(code) {}
 
-struct Context {
-  WABT_DISALLOW_COPY_AND_ASSIGN(Context);
-  Context();
+class BinaryWriter {
+  WABT_DISALLOW_COPY_AND_ASSIGN(BinaryWriter);
+
+ public:
+  BinaryWriter();
+
+ private:
+  void WriteHeader(const char* name, int index);
+  uint32_t WriteU32Leb128Space(uint32_t leb_size_guess, const char* desc);
+  void WriteFixupU32Leb128Size(uint32_t offset,
+                               uint32_t leb_size_guess,
+                               const char* desc);
 
   Stream stream;
   Stream* log_stream = nullptr;
@@ -78,12 +190,6 @@ struct Context {
   size_t last_subsection_payload_offset = 0;
 };
 
-Context::Context() {
-  WABT_ZERO_MEMORY(stream);
-}
-
-}  // namespace
-
 static uint8_t log2_u32(uint32_t x) {
   uint8_t result = 0;
   while (x > 1) {
@@ -93,112 +199,17 @@ static uint8_t log2_u32(uint32_t x) {
   return result;
 }
 
-static void write_header(Context* ctx, const char* name, int index) {
-  if (ctx->log_stream) {
+void BinaryWriter::WriteHeader(const char* name, int index) {
+  if (log_stream) {
     if (index == PRINT_HEADER_NO_INDEX) {
-      writef(ctx->log_stream, "; %s\n", name);
+      log_stream->Writef("; %s\n", name);
     } else {
-      writef(ctx->log_stream, "; %s %d\n", name, index);
+      log_stream->Writef("; %s %d\n", name, index);
     }
   }
 }
 
-#define LEB128_LOOP_UNTIL(end_cond) \
-  do {                              \
-    uint8_t byte = value & 0x7f;    \
-    value >>= 7;                    \
-    if (end_cond) {                 \
-      data[i++] = byte;             \
-      break;                        \
-    } else {                        \
-      data[i++] = byte | 0x80;      \
-    }                               \
-  } while (1)
-
 uint32_t u32_leb128_length(uint32_t value) {
-  uint8_t data[MAX_U32_LEB128_BYTES] WABT_UNUSED;
-  uint32_t i = 0;
-  LEB128_LOOP_UNTIL(value == 0);
-  return i;
-}
-
-/* returns the length of the leb128 */
-uint32_t write_u32_leb128_at(Stream* stream,
-                             uint32_t offset,
-                             uint32_t value,
-                             const char* desc) {
-  uint8_t data[MAX_U32_LEB128_BYTES];
-  uint32_t i = 0;
-  LEB128_LOOP_UNTIL(value == 0);
-  uint32_t length = i;
-  write_data_at(stream, offset, data, length, PrintChars::No, desc);
-  return length;
-}
-
-uint32_t write_fixed_u32_leb128_raw(uint8_t* data,
-                                    uint8_t* end,
-                                    uint32_t value) {
-  if (end - data < MAX_U32_LEB128_BYTES)
-    return 0;
-  data[0] = (value & 0x7f) | 0x80;
-  data[1] = ((value >> 7) & 0x7f) | 0x80;
-  data[2] = ((value >> 14) & 0x7f) | 0x80;
-  data[3] = ((value >> 21) & 0x7f) | 0x80;
-  data[4] = ((value >> 28) & 0x0f);
-  return MAX_U32_LEB128_BYTES;
-}
-
-uint32_t write_fixed_u32_leb128_at(Stream* stream,
-                                   uint32_t offset,
-                                   uint32_t value,
-                                   const char* desc) {
-  uint8_t data[MAX_U32_LEB128_BYTES];
-  uint32_t length =
-      write_fixed_u32_leb128_raw(data, data + MAX_U32_LEB128_BYTES, value);
-  write_data_at(stream, offset, data, length, PrintChars::No, desc);
-  return length;
-}
-
-void write_u32_leb128(Stream* stream, uint32_t value, const char* desc) {
-  uint32_t length = write_u32_leb128_at(stream, stream->offset, value, desc);
-  stream->offset += length;
-}
-
-void write_fixed_u32_leb128(Stream* stream, uint32_t value, const char* desc) {
-  uint32_t length =
-      write_fixed_u32_leb128_at(stream, stream->offset, value, desc);
-  stream->offset += length;
-}
-
-void write_i32_leb128(Stream* stream, int32_t value, const char* desc) {
-  uint8_t data[MAX_U32_LEB128_BYTES];
-  uint32_t i = 0;
-  if (value < 0)
-    LEB128_LOOP_UNTIL(value == -1 && (byte & 0x40));
-  else
-    LEB128_LOOP_UNTIL(value == 0 && !(byte & 0x40));
-
-  uint32_t length = i;
-  write_data_at(stream, stream->offset, data, length, PrintChars::No, desc);
-  stream->offset += length;
-}
-
-static void write_i64_leb128(Stream* stream, int64_t value, const char* desc) {
-  uint8_t data[MAX_U64_LEB128_BYTES];
-  uint32_t i = 0;
-  if (value < 0)
-    LEB128_LOOP_UNTIL(value == -1 && (byte & 0x40));
-  else
-    LEB128_LOOP_UNTIL(value == 0 && !(byte & 0x40));
-
-  int length = i;
-  write_data_at(stream, stream->offset, data, length, PrintChars::No, desc);
-  stream->offset += length;
-}
-
-#undef LEB128_LOOP_UNTIL
-
-static uint32_t size_u32_leb128(uint32_t value) {
   uint32_t size = 0;
   do {
     value >>= 7;
@@ -208,54 +219,34 @@ static uint32_t size_u32_leb128(uint32_t value) {
 }
 
 /* returns offset of leb128 */
-static uint32_t write_u32_leb128_space(Context* ctx,
-                                       uint32_t leb_size_guess,
-                                       const char* desc) {
+uint32_t BinaryWriter::WriteU32Leb128Space(uint32_t leb_size_guess,
+                                           const char* desc) {
   assert(leb_size_guess <= MAX_U32_LEB128_BYTES);
   uint8_t data[MAX_U32_LEB128_BYTES] = {0};
-  uint32_t result = ctx->stream.offset;
+  uint32_t result = stream.offset();
   uint32_t bytes_to_write =
-      ctx->options->canonicalize_lebs ? leb_size_guess : MAX_U32_LEB128_BYTES;
-  write_data(&ctx->stream, data, bytes_to_write, desc);
+      options->canonicalize_lebs ? leb_size_guess : MAX_U32_LEB128_BYTES;
+  stream.WriteData(data, bytes_to_write, desc);
   return result;
 }
 
-static void write_fixup_u32_leb128_size(Context* ctx,
-                                        uint32_t offset,
-                                        uint32_t leb_size_guess,
-                                        const char* desc) {
-  if (ctx->options->canonicalize_lebs) {
-    uint32_t size = ctx->stream.offset - offset - leb_size_guess;
-    uint32_t leb_size = size_u32_leb128(size);
+void BinaryWriter::WriteFixupU32Leb128Size(uint32_t offset,
+                                           uint32_t leb_size_guess,
+                                           const char* desc) {
+  if (options->canonicalize_lebs) {
+    uint32_t size = stream.offset() - offset - leb_size_guess;
+    uint32_t leb_size = u32_leb128_length(size);
     if (leb_size != leb_size_guess) {
       uint32_t src_offset = offset + leb_size_guess;
       uint32_t dst_offset = offset + leb_size;
-      move_data(&ctx->stream, dst_offset, src_offset, size);
+      stream.MoveData(dst_offset, src_offset, size);
     }
-    write_u32_leb128_at(&ctx->stream, offset, size, desc);
-    ctx->stream.offset += leb_size - leb_size_guess;
+    write_u32_leb128_at(&stream, offset, size, desc);
+    stream.AdjustOffset(leb_size - leb_size_guess);
   } else {
-    uint32_t size = ctx->stream.offset - offset - MAX_U32_LEB128_BYTES;
-    write_fixed_u32_leb128_at(&ctx->stream, offset, size, desc);
+    uint32_t size = stream.offset() - offset - MAX_U32_LEB128_BYTES;
+    write_fixed_u32_leb128_at(&stream, offset, size, desc);
   }
-}
-
-void write_str(Stream* stream,
-               const char* s,
-               size_t length,
-               PrintChars print_chars,
-               const char* desc) {
-  write_u32_leb128(stream, length, "string length");
-  write_data_at(stream, stream->offset, s, length, print_chars, desc);
-  stream->offset += length;
-}
-
-void write_opcode(Stream* stream, Opcode opcode) {
-  write_u8_enum(stream, opcode, get_opcode_name(opcode));
-}
-
-void write_type(Stream* stream, Type type) {
-  write_i32_leb128_enum(stream, type, get_type_name(type));
 }
 
 static void write_inline_signature_type(Stream* stream,
@@ -947,6 +938,8 @@ static Result write_module(Context* ctx, const Module* module) {
 
   return ctx->stream.result;
 }
+
+}  // namespace
 
 Result write_binary_module(Writer* writer,
                            const Module* module,

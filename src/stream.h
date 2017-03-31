@@ -36,43 +36,59 @@ class Stream {
  public:
   Stream(Writer* writer, Stream* log_stream = nullptr);
 
+  size_t offset() { return offset_; }
+  Result result() { return result_; }
+
+  void AdjustOffset(int delta);
+
   static Stream* Stdout();
   static Stream* Stderr();
 
-  // Helper functions for writing to a Stream. the |desc| parameter is
-  // optional, and will be appended to the log stream if |log_stream| is
-  // non-null.
+  void WriteData(const void* src,
+                 size_t size,
+                 const char* desc = nullptr,
+                 PrintChars = PrintChars::No);
+  void MoveData(size_t dst_offset, size_t src_offset, size_t size);
+
   void WriteDataAt(size_t offset,
                    const void* src,
                    size_t size,
-                   PrintChars print_chars = PrintChars::No,
-                   const char* desc = nullptr);
-  void WriteData(const void* src, size_t size, const char* desc = nullptr);
-  void MoveData(size_t dst_offset, size_t src_offset, size_t size);
+                   const char* desc = nullptr,
+                   PrintChars = PrintChars::No);
 
   void WABT_PRINTF_FORMAT(2, 3) Writef(const char* format, ...);
 
   // Specified as uint32_t instead of uint8_t so we can check if the value
   // given is in range before wrapping.
-  void WriteU8(uint32_t value, const char* desc = nullptr) {
+  void WriteU8(uint32_t value,
+               const char* desc = nullptr,
+               PrintChars print_chars = PrintChars::No) {
     assert(value <= UINT8_MAX);
-    Write(static_cast<uint8_t>(value), desc);
+    Write(static_cast<uint8_t>(value), desc, print_chars);
   }
-  void WriteU32(uint32_t value, const char* desc = nullptr) {
-    Write(value, desc);
+  void WriteU32(uint32_t value,
+                const char* desc = nullptr,
+                PrintChars print_chars = PrintChars::No) {
+    Write(value, desc, print_chars);
   }
-  void WriteU64(uint64_t value, const char* desc = nullptr) {
-    Write(value, desc);
+  void WriteU64(uint64_t value,
+                const char* desc = nullptr,
+                PrintChars print_chars = PrintChars::No) {
+    Write(value, desc, print_chars);
   }
-  void WriteChar(char c) { WriteU8(c); }
+  void WriteChar(char c,
+                 const char* desc = nullptr,
+                 PrintChars print_chars = PrintChars::No) {
+    WriteU8(c, desc, print_chars);
+  }
 
   // Dump memory as text, similar to the xxd format.
   void WriteMemoryDump(const void* start,
                        size_t size,
                        size_t offset,
-                       PrintChars print_chars = PrintChars::No,
                        const char* prefix = nullptr,
-                       const char* desc = nullptr);
+                       const char* desc = nullptr,
+                       PrintChars print_chars = PrintChars::No);
 
   void WriteOutputBufferMemoryDump(const OutputBuffer& buf);
 
@@ -84,8 +100,8 @@ class Stream {
 
  private:
   template <typename T>
-  void Write(const T& data, const char* desc = nullptr) {
-    WriteData(&data, sizeof(data), desc);
+  void Write(const T& data, const char* desc, PrintChars print_chars) {
+    WriteData(&data, sizeof(data), desc, print_chars);
     offset_ += sizeof(data);
   }
 

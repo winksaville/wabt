@@ -67,11 +67,11 @@ void BinaryReaderLogging::WriteIndent() {
   static size_t s_indent_len = sizeof(s_indent) - 1;
   size_t i = indent;
   while (i > s_indent_len) {
-    stream->WriteData(s_indent, s_indent_len, nullptr);
+    stream->WriteData(s_indent, s_indent_len);
     i -= s_indent_len;
   }
   if (i > 0) {
-    stream->WriteData(s_indent, indent, nullptr);
+    stream->WriteData(s_indent, indent);
   }
 }
 

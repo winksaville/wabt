@@ -43,18 +43,21 @@ Stream* Stream::Stderr() {
 void Stream::WriteDataAt(size_t at,
                          const void* src,
                          size_t size,
-                         PrintChars print_chars,
-                         const char* desc) {
+                         const char* desc,
+                         PrintChars print_chars) {
   if (WABT_FAILED(result_))
     return;
   if (log_stream_) {
-    log_stream_->WriteMemoryDump(src, size, at, print_chars, nullptr, desc);
+    log_stream_->WriteMemoryDump(src, size, at, nullptr, desc, print_chars);
   }
   result_ = writer_->WriteData(at, src, size);
 }
 
-void Stream::WriteData(const void* src, size_t size, const char* desc) {
-  WriteDataAt(offset_, src, size, PrintChars::No, desc);
+void Stream::WriteData(const void* src,
+                       size_t size,
+                       const char* desc,
+                       PrintChars print_chars) {
+  WriteDataAt(offset_, src, size, desc, print_chars);
   offset_ += size;
 }
 
@@ -77,9 +80,9 @@ void Stream::Writef(const char* format, ...) {
 void Stream::WriteMemoryDump(const void* start,
                              size_t size,
                              size_t offset,
-                             PrintChars print_chars,
                              const char* prefix,
-                             const char* desc) {
+                             const char* desc,
+                             PrintChars print_chars) {
   const uint8_t* p = static_cast<const uint8_t*>(start);
   const uint8_t* end = p + size;
   while (p < end) {
@@ -117,8 +120,7 @@ void Stream::WriteMemoryDump(const void* start,
 
 void Stream::WriteOutputBufferMemoryDump(const OutputBuffer& buf) {
   if (buf.data.empty()) {
-    WriteMemoryDump(buf.data.data(), buf.data.size(), 0, PrintChars::No,
-                    nullptr, nullptr);
+    WriteMemoryDump(buf.data.data(), buf.data.size(), 0);
   }
 }
 
