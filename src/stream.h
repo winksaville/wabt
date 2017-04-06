@@ -39,7 +39,7 @@ class Stream {
   size_t offset() { return offset_; }
   Result result() { return result_; }
 
-  void AdjustOffset(int delta);
+  void AddOffset(ssize_t delta);
 
   static Stream* Stdout();
   static Stream* Stderr();
@@ -94,8 +94,10 @@ class Stream {
 
   // Convenience functions for writing enums.
   template <typename T>
-  void WriteU8Enum(T value, const char* desc = nullptr) {
-    WriteU8(static_cast<uint32_t>(value), desc);
+  void WriteU8Enum(T value,
+                   const char* desc = nullptr,
+                   PrintChars print_chars = PrintChars::No) {
+    WriteU8(static_cast<uint32_t>(value), desc, print_chars);
   }
 
  private:
