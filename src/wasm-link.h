@@ -23,7 +23,7 @@
 #include "binary.h"
 #include "common.h"
 
-#define WABT_LINK_MODULE_NAME "__extern"
+#define WABT_LINK_MODULE_NAME "env"
 
 namespace wabt {
 namespace link {
